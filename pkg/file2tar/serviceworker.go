@@ -1,4 +1,4 @@
-package main
+package file2tar
 
 import (
 	"context"
@@ -9,21 +9,21 @@ import (
 )
 
 type Consumer struct {
-	ingestChan chan *ControlFile
-	jobsChan   chan *ControlFile
+	IngestChan chan *ControlFile
+	JobsChan   chan *ControlFile
 }
 
-// callbackFunc is invoked each time the external lib passes an event to us.
-func (c Consumer) callbackFunc(cf *ControlFile) {
-	c.ingestChan <- cf
+// CallbackFunc is invoked each time the external lib passes an event to us.
+func (c Consumer) CallbackFunc(cf *ControlFile) {
+	c.IngestChan <- cf
 }
 
-// workerFunc starts a single worker function that will range on the jobsChan until that channel closes.
-func (c Consumer) workerFunc(wg *sync.WaitGroup, workerId int) {
+// WorkerFunc starts a single worker function that will range on the jobsChan until that channel closes.
+func (c Consumer) WorkerFunc(wg *sync.WaitGroup, workerId int) {
 	defer wg.Done()
 
 	fmt.Printf("Novo Trabalhador! %d\n", workerId)
-	for eventIndex := range c.jobsChan {
+	for eventIndex := range c.JobsChan {
 
 		eventIndex.Lock()
 		fmt.Printf("executando serviço %v < index \n", eventIndex)
@@ -43,18 +43,18 @@ func (c Consumer) workerFunc(wg *sync.WaitGroup, workerId int) {
 	fmt.Printf("Trabalhador %d desligado!\n", workerId)
 }
 
-func (c Consumer) proxyMessages(ctx context.Context) {
+func (c Consumer) ProxyMessages(ctx context.Context) {
 	for {
 		fmt.Printf("comeco do proxyMessages\n")
 		select {
-		case job := <-c.ingestChan:
+		case job := <-c.IngestChan:
 			fmt.Printf("proxying job...\n")
-			c.jobsChan <- job
+			c.JobsChan <- job
 			fmt.Printf("job was proxyed!\n")
 
 		case <-ctx.Done():
 			fmt.Println("Sinal de cancelar recebido, fechando canal de trabalhos!")
-			close(c.jobsChan)
+			close(c.JobsChan)
 			fmt.Println("canal de trabalhos encerrados")
 
 			return
@@ -66,10 +66,10 @@ func (c Consumer) proxyMessages(ctx context.Context) {
 }
 
 type Producer struct {
-	callbackFunc func(cf *ControlFile)
+	CallbackFunc func(cf *ControlFile)
 }
 
-func (p Producer) start(cm *ControlFileManager) {
+func (p Producer) Start(cm *ControlFileManager) {
 	const WAIT_TIME = 5
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
@@ -91,7 +91,7 @@ func (p Producer) start(cm *ControlFileManager) {
 			} else if !v.is_working && now-v.timestamp > WAIT_TIME {
 				v.is_working = true
 
-				p.callbackFunc(v)
+				p.CallbackFunc(v)
 			}
 			v.Unlock()
 			newJobs = append(newJobs, v)

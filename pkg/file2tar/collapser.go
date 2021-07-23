@@ -1,4 +1,4 @@
-package main
+package file2tar
 
 import (
 	"bufio"

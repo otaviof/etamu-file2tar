@@ -12,28 +12,29 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/renatocron/etamu-file2tar/pkg/file2tar"
 )
 
 func init() {
 
-	if WorkDir == "" {
+	if file2tar.WorkDir == "" {
 		panic("Missing ENV WORK_DIR")
 	}
-	if _, err := os.Stat(WorkDir); os.IsNotExist(err) {
+	if _, err := os.Stat(file2tar.WorkDir); os.IsNotExist(err) {
 		panic(fmt.Sprintf("Missing WORK_DIR does not exists: %v", err))
 	}
-	if !strings.HasSuffix(WorkDir, "/") {
-		WorkDir = WorkDir + "/"
+	if !strings.HasSuffix(file2tar.WorkDir, "/") {
+		file2tar.WorkDir = file2tar.WorkDir + "/"
 	}
 
-	if BaseDir == "" {
+	if file2tar.BaseDir == "" {
 		panic("Missing ENV BASE_DIR")
 	}
-	if _, err := os.Stat(BaseDir); os.IsNotExist(err) {
+	if _, err := os.Stat(file2tar.BaseDir); os.IsNotExist(err) {
 		panic(fmt.Sprintf("Missing BASE_DIR does not exists: %v", err))
 	}
-	if !strings.HasSuffix(BaseDir, "/") {
-		BaseDir = BaseDir + "/"
+	if !strings.HasSuffix(file2tar.BaseDir, "/") {
+		file2tar.BaseDir = file2tar.BaseDir + "/"
 	}
 
 }
@@ -46,17 +47,17 @@ func main() {
 	app.Use(middleware.Logger())
 	app.Use(middleware.Recover())
 
-	cm := NewControlFileManager()
-	err := cm.AddControlFromDir(WorkDir)
+	cm := file2tar.NewControlFileManager()
+	err := cm.AddControlFromDir(file2tar.WorkDir)
 	if err != nil {
 		panic(fmt.Sprintf("Cannot start, AddControlFromDir failed with %v", err))
 	}
 
 	app.POST("/add", func(c echo.Context) error {
 
-		return adding_post(c, func(frl *FileResponseList) error {
+		return file2tar.Adding_post(c, func(frl *file2tar.FileResponseList) error {
 			cm.AddControlFile(frl)
-			println(frl.timestamp)
+			println(frl.Timestamp)
 			return nil
 		})
 	})
@@ -73,23 +74,23 @@ func main() {
 		}
 	}()
 
-	consumer := Consumer{
-		ingestChan: make(chan *ControlFile, 1),
-		jobsChan:   make(chan *ControlFile, 1000),
+	consumer := file2tar.Consumer{
+		IngestChan: make(chan *file2tar.ControlFile, 1),
+		JobsChan:   make(chan *file2tar.ControlFile, 1000),
 	}
 
 	// Set up cancellation context and waitgroup
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
-	go consumer.proxyMessages(ctx)
+	go consumer.ProxyMessages(ctx)
 
 	for i := 0; i < BG_WORKERS; i++ {
 		wg.Add(1)
-		go consumer.workerFunc(wg, i)
+		go consumer.WorkerFunc(wg, i)
 	}
 
-	producer := Producer{callbackFunc: consumer.callbackFunc}
-	go producer.start(cm)
+	producer := file2tar.Producer{CallbackFunc: consumer.CallbackFunc}
+	go producer.Start(cm)
 
 	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 10 seconds.
 	// Use a buffered channel to avoid missing signals as recommended for signal.Notify

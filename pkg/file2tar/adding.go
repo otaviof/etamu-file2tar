@@ -1,4 +1,4 @@
-package main
+package file2tar
 
 import (
 	"fmt"
@@ -40,7 +40,7 @@ func (fr *FileResponse) MoveFile(dest string) error {
 type FileResponseList struct {
 	Files       []FileResponse `json:"files"`
 	subdir      string
-	timestamp   int64
+	Timestamp   int64
 	controlPath string
 }
 
@@ -55,7 +55,7 @@ func (frl *FileResponseList) Add(file_name string) {
 }
 
 func (frl *FileResponseList) GetTimestamp() int64 {
-	return frl.timestamp
+	return frl.Timestamp
 }
 
 func (frl *FileResponseList) GetSubdir() string {
@@ -73,8 +73,8 @@ func (frl *FileResponseList) GetFilesNames() []string {
 }
 
 func (frl *FileResponseList) writeControlFile() error {
-	tmpName := fmt.Sprintf("%s/%d.tmp", WorkDir+frl.subdir, frl.timestamp)
-	frl.controlPath = fmt.Sprintf("%s/%d.control", WorkDir+frl.subdir, frl.timestamp)
+	tmpName := fmt.Sprintf("%s/%d.tmp", WorkDir+frl.subdir, frl.Timestamp)
+	frl.controlPath = fmt.Sprintf("%s/%d.control", WorkDir+frl.subdir, frl.Timestamp)
 
 	if _, err := os.Stat(frl.controlPath); !os.IsNotExist(err) {
 		if err != nil {
@@ -147,11 +147,11 @@ func newFileResponseList(cameraId int, timestamp int64) *FileResponseList {
 	return &FileResponseList{
 		Files:     make([]FileResponse, 0, 2),
 		subdir:    fmt.Sprintf("cam-%d", cameraId),
-		timestamp: timestamp,
+		Timestamp: timestamp,
 	}
 }
 
-func adding_post(c echo.Context, onSuccess func(*FileResponseList) error) error {
+func Adding_post(c echo.Context, onSuccess func(*FileResponseList) error) error {
 
 	if onSuccess == nil {
 		panic("you using it wrong! onSuccess must be defined")

@@ -1,2 +1,5 @@
-tmp
 .vstags
+.vscode
+_output/
+tmp/
+vendor/

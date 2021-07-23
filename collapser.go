@@ -13,14 +13,30 @@ import (
 )
 
 type ControlFile struct {
-	files     []string
-	subdir    string
-	timestamp int64
+	sync.Mutex
+	files      []string
+	subdir     string
+	timestamp  int64
+	is_working bool
+	is_done    bool
+}
+
+func (v *ControlFile) DebugToStr() string {
+
+	str := ""
+	files := ""
+	for _, fn := range v.files {
+		files = files + fn + " "
+	}
+
+	str = str + fmt.Sprintf("timestamp %d %s with files %s (is-working %v is-done %v)\n", v.timestamp, v.subdir, files, v.is_working, v.is_done)
+
+	return str
 }
 
 type ControlFileManager struct {
 	sync.Mutex
-	jobs []ControlFile
+	jobs []*ControlFile
 }
 
 func (cm *ControlFileManager) AddControlFile(frl *FileResponseList) {
@@ -31,7 +47,7 @@ func (cm *ControlFileManager) AddControlFile(frl *FileResponseList) {
 		subdir:    frl.GetSubdir(),
 	}
 	cm.Lock()
-	cm.jobs = append(cm.jobs, job)
+	cm.jobs = append(cm.jobs, &job)
 	cm.Unlock()
 }
 
@@ -83,7 +99,7 @@ func (cm *ControlFileManager) AddControlFromDir(fromDir string) error {
 			println(" - " + v)
 		}
 
-		job := ControlFile{
+		job := &ControlFile{
 			timestamp: int64(timestamp),
 			files:     referencedFiles,
 			subdir:    subdir,
@@ -106,12 +122,8 @@ func (cm *ControlFileManager) DebugToStr() string {
 	cm.Lock()
 	defer cm.Unlock()
 	for i, v := range cm.jobs {
-		files := ""
-		for _, fn := range v.files {
-			files = files + fn + " "
-		}
 
-		str = str + fmt.Sprintf("entry %d - timestamp %d %s with files %s\n", i, v.timestamp, v.subdir, files)
+		str = str + fmt.Sprintf("entry %d, %s", i, v.DebugToStr())
 	}
 
 	return str
@@ -119,6 +131,6 @@ func (cm *ControlFileManager) DebugToStr() string {
 
 func NewControlFileManager() *ControlFileManager {
 	return &ControlFileManager{
-		jobs: make([]ControlFile, 0, 100),
+		jobs: make([]*ControlFile, 0, 100),
 	}
 }

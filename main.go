@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -35,6 +39,7 @@ func init() {
 }
 
 func main() {
+	const BG_WORKERS = 4
 	app := echo.New()
 
 	// Middlewares
@@ -62,109 +67,44 @@ func main() {
 	})
 
 	// Start server
-	//go func() {
-	if err := app.Start(":1323"); err != nil && err != http.ErrServerClosed {
-		app.Logger.Fatal("Desligando http")
-	}
-	//}()
-	/*
-		consumer := Consumer{
-			ingestChan: make(chan int),
-			jobsChan:   make(chan int),
+	go func() {
+		if err := app.Start(":1323"); err != nil && err != http.ErrServerClosed {
+			app.Logger.Fatal("Desligando http")
 		}
+	}()
 
-		// Set up cancellation context and waitgroup
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		wg := &sync.WaitGroup{}
-		go consumer.proxyMessages(ctx)
+	consumer := Consumer{
+		ingestChan: make(chan *ControlFile, 1),
+		jobsChan:   make(chan *ControlFile, 1000),
+	}
+
+	// Set up cancellation context and waitgroup
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
+	go consumer.proxyMessages(ctx)
+
+	for i := 0; i < BG_WORKERS; i++ {
 		wg.Add(1)
-		go consumer.workerFunc(wg)
-
-		producer := Producer{callbackFunc: consumer.callbackFunc}
-		go producer.start()
-
-		// Wait for interrupt signal to gracefully shutdown the server with a timeout of 10 seconds.
-		// Use a buffered channel to avoid missing signals as recommended for signal.Notify
-		quit := make(chan os.Signal, 1)
-		signal.Notify(quit, os.Interrupt)
-		<-quit
-
-		fmt.Println("Sinal para desligar recebido!")
-		cancelFunc() // Signal cancellation to context.Context
-		wg.Wait()    // Block here until are workers are done
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := app.Shutdown(ctx); err != nil {
-			app.Logger.Fatal(err)
-		}
-	*/
-}
-
-/*
-
-type Consumer struct {
-	ingestChan chan int
-	jobsChan   chan int
-}
-
-// callbackFunc is invoked each time the external lib passes an event to us.
-func (c Consumer) callbackFunc(event int) {
-	c.ingestChan <- event
-}
-
-// workerFunc starts a single worker function that will range on the jobsChan until that channel closes.
-func (c Consumer) workerFunc(wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	fmt.Printf("Novo Trabalhador!\n")
-	for eventIndex := range c.jobsChan {
-
-		fmt.Printf("executando serviço %d < index \n", eventIndex)
-		//time.Sleep(time.Second / 3)
-		//fmt.Printf("still doing work\n")
-		time.Sleep(time.Second * 4)
-		fmt.Printf("serviço finalizado %d!\n\n", eventIndex)
-
+		go consumer.workerFunc(wg, i)
 	}
-	fmt.Printf("Trabalhador desligado!\n")
-}
 
-func (c Consumer) proxyMessages(ctx context.Context) {
-	for {
-		fmt.Printf("comeco do proxyMessages\n")
-		select {
-		case job := <-c.ingestChan:
-			fmt.Printf("publicando novo serviço...\n")
-			c.jobsChan <- job
-			fmt.Printf("servico publicado no canal!\n")
+	producer := Producer{callbackFunc: consumer.callbackFunc}
+	go producer.start(cm)
 
-		case <-ctx.Done():
-			fmt.Println("Sinal de cancelar recebido, fechando canal de trabalhos!")
-			close(c.jobsChan)
-			fmt.Println("canal de trabalhos encerrados")
+	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 10 seconds.
+	// Use a buffered channel to avoid missing signals as recommended for signal.Notify
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
 
-			return
+	fmt.Println("Sinal para desligar recebido!")
+	cancelFunc() // Signal cancellation to context.Context
+	wg.Wait()    // Block here until are workers are done
 
-		}
-		fmt.Printf("fim do proxyMessages\n")
-
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := app.Shutdown(ctx); err != nil {
+		app.Logger.Fatal(err)
 	}
+
 }
-
-type Producer struct {
-	callbackFunc func(event int)
-}
-
-func (p Producer) start() {
-	eventIndex := 1
-	for {
-		fmt.Printf("preparando novo servico %d\n", eventIndex)
-		p.callbackFunc(eventIndex)
-		eventIndex++
-
-		//time.Sleep(time.Second)
-	}
-}
-
-*/

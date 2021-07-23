@@ -209,5 +209,6 @@ func adding_post(c echo.Context, onSuccess func(*FileResponseList) error) error 
 		})
 	}
 
+	file_list = nil
 	return c.JSON(http.StatusOK, file_list)
 }

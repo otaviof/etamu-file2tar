@@ -1,17 +1,11 @@
 #!/bin/bash
 
 cd /home/renato/projetos/mygoprojs/src/github.com/renatocron/etamu-file2tar/
+mkdir -p ./tmp/work-dir/
+mkdir -p ./tmp/base-dir/
 
 rm -rfv ./tmp/base-dir/*
 
-. test-upload.sh &
-. test-upload.sh &
-. test-upload.sh &
-. test-upload.sh &
-. test-upload.sh &
-. test-upload.sh &
-. test-upload.sh &
-. test-upload.sh &
 . test-upload.sh &
 . test-upload.sh
 

@@ -73,6 +73,15 @@ func (frl *FileResponseList) GetFilesNames() []string {
 }
 
 func (frl *FileResponseList) writeControlFile() error {
+	tmpName := fmt.Sprintf("%s/%d.tmp", WorkDir+frl.subdir, frl.timestamp)
+	frl.controlPath = fmt.Sprintf("%s/%d.control", WorkDir+frl.subdir, frl.timestamp)
+
+	if _, err := os.Stat(frl.controlPath); !os.IsNotExist(err) {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("file %s already exists", frl.controlPath)
+	}
 
 	if _, err := os.Stat(WorkDir + frl.subdir); os.IsNotExist(err) {
 		err := os.MkdirAll(WorkDir+frl.subdir, 0775)
@@ -87,9 +96,6 @@ func (frl *FileResponseList) writeControlFile() error {
 		fileContent = fileContent + fl.FileID + "\n"
 		logContent = logContent + fl.FileID + " "
 	}
-
-	tmpName := fmt.Sprintf("%s/%d.tmp", WorkDir+frl.subdir, frl.timestamp)
-	frl.controlPath = fmt.Sprintf("%s/%d.control", WorkDir+frl.subdir, frl.timestamp)
 
 	fmt.Printf("writing control file %s for files %s\n", frl.controlPath, logContent)
 

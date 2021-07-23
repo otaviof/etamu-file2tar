@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -41,10 +40,12 @@ func main() {
 	// Middlewares
 	app.Use(middleware.Logger())
 	app.Use(middleware.Recover())
-	runtime.GOMAXPROCS(1)
-	fmt.Printf("%v", runtime.GOMAXPROCS(-1))
 
 	cm := NewControlFileManager()
+	err := cm.AddControlFromDir(WorkDir)
+	if err != nil {
+		panic(fmt.Sprintf("Cannot start, AddControlFromDir failed with %v", err))
+	}
 
 	app.POST("/add", func(c echo.Context) error {
 

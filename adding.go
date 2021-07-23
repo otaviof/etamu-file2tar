@@ -54,6 +54,14 @@ func (frl *FileResponseList) Add(file_name string) {
 
 }
 
+func (frl *FileResponseList) GetTimestamp() int64 {
+	return frl.timestamp
+}
+
+func (frl *FileResponseList) GetSubdir() string {
+	return frl.subdir
+}
+
 func (frl *FileResponseList) GetFilesNames() []string {
 	files := make([]string, 0, len(frl.Files))
 

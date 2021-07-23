@@ -75,9 +75,12 @@ func (cm *ControlFileManager) AddControlFromDir(fromDir string) error {
 		for scanner.Scan() {
 			referencedFiles = append(referencedFiles, scanner.Text())
 		}
+		if err := scanner.Err(); err != nil {
+			return err
+		}
 
 		for _, v := range referencedFiles {
-			println("  : " + v)
+			println(" - " + v)
 		}
 
 		job := ControlFile{

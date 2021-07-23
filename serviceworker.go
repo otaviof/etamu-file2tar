@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -24,7 +25,9 @@ func (c Consumer) workerFunc(wg *sync.WaitGroup, workerId int) {
 	fmt.Printf("Novo Trabalhador! %d\n", workerId)
 	for eventIndex := range c.jobsChan {
 
+		eventIndex.Lock()
 		fmt.Printf("executando serviço %v < index \n", eventIndex)
+		eventIndex.Unlock()
 		//time.Sleep(time.Second / 3)
 		time.Sleep(time.Second * 20)
 
@@ -68,18 +71,19 @@ type Producer struct {
 
 func (p Producer) start(cm *ControlFileManager) {
 	const WAIT_TIME = 5
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	for {
 		now := time.Now().Unix()
 		fmt.Printf("now is %d\n", now)
 
+		log.Print("locking cm")
 		cm.Lock()
-
 		newJobs := make([]*ControlFile, 0)
-
 		for _, v := range cm.jobs {
 
 			v.Lock()
-			println("v " + v.DebugToStr())
+			print("v " + v.DebugToStr())
 			if v.is_done {
 
 				v.Unlock()
@@ -95,6 +99,7 @@ func (p Producer) start(cm *ControlFileManager) {
 		cm.jobs = newJobs
 
 		cm.Unlock()
+		log.Print("unlocking cm")
 
 		time.Sleep(time.Second)
 	}
